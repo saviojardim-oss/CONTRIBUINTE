@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Consulta Imobiliária</title>
+    <title>Consulta de Contribuintes</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -19,8 +19,8 @@
 
         .table-responsive { overflow-x: auto; margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 8px; max-height: 600px; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
-        th { background-color: #1e3a8a; color: white; padding: 12px 10px; font-weight: 600; position: sticky; top: 0; z-index: 10; }
-        td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #475569; }
+        th { background-color: #1e3a8a; color: white; padding: 12px 10px; font-weight: 600; position: sticky; top: 0; z-index: 10; white-space: nowrap; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #475569; white-space: nowrap; }
         tr:nth-child(even) { background-color: #f8fafc; }
         tr:hover { background-color: #f1f5f9; }
 
@@ -31,7 +31,7 @@
 <body>
 
 <div class="container">
-    <h1>📋 Consulta de Imóveis e Proprietários</h1>
+    <h1>📋 Consulta de Contribuintes</h1>
     
     <div class="search-container">
         <input type="text" id="search-input" class="search-box" placeholder="Carregando dados, aguarde..." disabled>
@@ -43,47 +43,46 @@
         <table id="tabela-resultados">
             <thead>
                 <tr>
-                    <th>Proprietário</th>
-                    <th>Responsável</th>
-                    <th>CNPJ/CPF Resp.</th>
-                    <th>Inscrição</th>
+                    <th>Nome / Razão Social</th>
+                    <th>CPF / CNPJ</th>
+                    <th>RG / Inscr. Estadual</th>
+                    <th>Estado</th>
+                    <th>Cidade</th>
                     <th>Bairro</th>
                     <th>Logradouro</th>
                     <th>Nº</th>
                     <th>CEP</th>
-                    <th>Quadra</th>
-                    <th>Lote</th>
-                    <th>Área Terr. (m²)</th>
-                    <th>Área Edif. (m²)</th>
-                    <th>Matrícula</th>
-                    <th>Endereço Entrega</th>
+                    <th>Complemento</th>
+                    <th>E-mail</th>
+                    <th>Telefones</th>
                 </tr>
             </thead>
             <tbody id="corpo-tabela">
                 </tbody>
         </table>
     </div>
-    <div id="status-mensagem" class="carregando">Buscando arquivo CSV...</div>
+    <div id="status-mensagem" class="carregando">Buscando arquivo de contribuintes...</div>
 </div>
 
 <script>
-    let dadosImoveis = [];
+    let dadosContribuientes = [];
 
-    // Lendo o arquivo simplificado 'dados.csv' usando PapaParse
+    // Lendo o arquivo 'dados.csv' usando PapaParse
     Papa.parse('dados.csv', {
         download: true,
         header: true,
         skipEmptyLines: true,
+        delimiter: ";", // Força o uso do Ponto e Vírgula que veio no seu cabeçalho
         complete: function(results) {
-            dadosImoveis = results.data;
+            dadosContribuientes = results.data;
             
             const input = document.getElementById('search-input');
             input.disabled = false;
-            input.placeholder = "Busque por Proprietário, CPF, Inscrição, Bairro...";
+            input.placeholder = "Busque por Nome, CPF/CNPJ, Cidade, Bairro, Telefone...";
             document.getElementById('status-mensagem').style.display = 'none';
             
             // Exibe os primeiros 100 itens para o carregamento inicial ser instantâneo
-            exibirDados(dadosImoveis.slice(0, 100), dadosImoveis.length);
+            exibirDados(dadosContribuientes.slice(0, 100), dadosContribuientes.length);
         },
         error: function(err) {
             console.error("Erro ao ler o CSV:", err);
@@ -92,7 +91,7 @@
         }
     });
 
-    // Função para renderizar os dados na tabela
+    // Função para renderizar os dados na tabela baseado nos campos exatos do seu CSV
     function exibirDados(lista, totalGeral = null) {
         const corpoTabela = document.getElementById('corpo-tabela');
         const contador = document.getElementById('contador-resultados');
@@ -102,42 +101,41 @@
         contador.innerText = `${totalExibido} registro(s) encontrado(s).` + (lista.length === 100 ? " (Exibindo os primeiros 100 resultados para poupar memória)" : "");
 
         if (lista.length === 0) {
-            corpoTabela.innerHTML = `<tr><td colspan="14" class="sem-resultados">Nenhum registro encontrado para essa busca.</td></tr>`;
+            corpoTabela.innerHTML = `<tr><td colspan="12" class="sem-resultados">Nenhum registro encontrado para essa busca.</td></tr>`;
             return;
         }
 
         lista.forEach(item => {
             const tr = document.createElement('tr');
+            // ATENÇÃO: Mapeado exatamente com as chaves maiúsculas do seu arquivo CSV original
             tr.innerHTML = `
-                <td><b>${item['PROPRIETARIO'] || '-'}</b></td>
-                <td>${item['RESPONSAVEL'] || '-'}</td>
-                <td>${item['CNPJ CPF RESPONSAVEL'] || '-'}</td>
-                <td>${item['INSCRICAO'] || '-'}</td>
-                <td>${item['BAIRRO'] || '-'}</td>
-                <td>${item['IMOVELLOGRADOURO'] || '-'}</td>
-                <td>${item['NUMERO'] || '-'}</td>
-                <td>${item['IMOVELCEP'] || '-'}</td>
-                <td>${item['QUADRA'] || '-'}</td>
-                <td>${item['LOTES'] || '-'}</td>
-                <td>${item['AREA TERRENO'] || '-'}</td>
-                <td>${item['AREA EDIFICADA'] || '-'}</td>
-                <td>${item['MATRICULA'] || '-'}</td>
-                <td>${item['ENTREGA ENDERECO'] || '-'}</td>
+                <td><b>${item['nome'] || item['NOME'] || '-'}</b></td>
+                <td>${item['cgccpf'] || item['CGCCPF'] || '-'}</td>
+                <td>${item['rginscrestadual'] || item['RGINSCRESTADUAL'] || '-'}</td>
+                <td>${item['estado'] || item['ESTADO'] || '-'}</td>
+                <td>${item['cidade'] || item['CIDADE'] || '-'}</td>
+                <td>${item['bairro'] || item['BAIRRO'] || '-'}</td>
+                <td>${item['logradouro'] || item['LOGRADOURO'] || '-'}</td>
+                <td>${item['numero'] || item['NUMERO'] || '-'}</td>
+                <td>${item['cep'] || item['CEP'] || '-'}</td>
+                <td>${item['complemento'] || item['COMPLEMENTO'] || '-'}</td>
+                <td>${item['email'] || item['EMAIL'] || '-'}</td>
+                <td>${item['telefones'] || item['TELEFONES'] || '-'}</td>
             `;
             corpoTabela.appendChild(tr);
         });
     }
 
-    // Filtro de pesquisa rápido com remoção de acentos
+    // Filtro de pesquisa universal por texto (Procura em qualquer campo)
     document.getElementById('search-input').addEventListener('input', (e) => {
         const termo = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
         if (!termo) {
-            exibirDados(dadosImoveis.slice(0, 100), dadosImoveis.length);
+            exibirDados(dadosContribuientes.slice(0, 100), dadosContribuientes.length);
             return;
         }
 
-        const filtrados = dadosImoveis.filter(item => {
+        const filtrados = dadosContribuientes.filter(item => {
             const textoLinha = Object.values(item).join(' ').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             return textoLinha.includes(termo);
         });
