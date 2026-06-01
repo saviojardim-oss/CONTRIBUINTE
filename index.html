@@ -3,21 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Contribuintes</title>
+    <title>Consulta Avançada de Contribuintes</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #f8f9fa; margin: 0; padding: 30px 15px; color: #333; }
+        body { background-color: #f8f9fa; margin: 0; padding: 20px 15px; color: #333; }
         .container { max-width: 100%; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h1 { color: #1e3a8a; margin-top: 0; font-size: 24px; text-align: center; }
+        h1 { color: #1e3a8a; margin-top: 0; font-size: 24px; text-align: center; margin-bottom: 20px; }
         
-        .search-container { position: relative; max-width: 600px; margin: 0 auto 25px auto; }
-        .search-box { width: 100%; padding: 14px 20px; font-size: 16px; border: 2px solid #cbd5e1; border-radius: 30px; outline: none; transition: all 0.3s; }
-        .search-box:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15); }
+        /* Painel de Filtros Avançados */
+        .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; background: #f1f5f9; padding: 15px; border-radius: 8px; }
+        .grupo-filtro { display: flex; flex-direction: column; }
+        .grupo-filtro label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+        .filtro-input { padding: 8px 12px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; transition: all 0.2s; }
+        .filtro-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
         
         .contador { text-align: center; color: #64748b; font-size: 14px; margin-bottom: 15px; font-weight: 500; }
 
-        .table-responsive { overflow-x: auto; margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 8px; max-height: 600px; }
+        /* Tabela Estruturada */
+        .table-responsive { overflow-x: auto; margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 8px; max-height: 550px; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
         th { background-color: #1e3a8a; color: white; padding: 12px 10px; font-weight: 600; position: sticky; top: 0; z-index: 10; white-space: nowrap; }
         td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #475569; white-space: nowrap; }
@@ -31,10 +35,25 @@
 <body>
 
 <div class="container">
-    <h1>📋 Consulta de Contribuintes</h1>
+    <h1>📋 Painel de Consulta de Contribuintes</h1>
     
-    <div class="search-container">
-        <input type="text" id="search-input" class="search-box" placeholder="Carregando dados, aguarde..." disabled>
+    <div class="filtros-grid">
+        <div class="grupo-filtro">
+            <label>Nome / Razão Social</label>
+            <input type="text" id="filtro-nome" class="filtro-input" placeholder="Filtrar por nome..." disabled>
+        </div>
+        <div class="grupo-filtro">
+            <label>CPF / CNPJ</label>
+            <input type="text" id="filtro-doc" class="filtro-input" placeholder="Filtrar por documento..." disabled>
+        </div>
+        <div class="grupo-filtro">
+            <label>Bairro</label>
+            <input type="text" id="filtro-bairro" class="filtro-input" placeholder="Filtrar por bairro..." disabled>
+        </div>
+        <div class="grupo-filtro">
+            <label>Cidade</label>
+            <input type="text" id="filtro-cidade" class="filtro-input" placeholder="Filtrar por cidade..." disabled>
+        </div>
     </div>
     
     <div id="contador-resultados" class="contador"></div>
@@ -72,42 +91,40 @@
         download: true,
         header: true,
         skipEmptyLines: true,
-        delimiter: ";", // Força o uso do Ponto e Vírgula que veio no seu cabeçalho
+        delimiter: ";", 
         complete: function(results) {
             dadosContribuientes = results.data;
             
-            const input = document.getElementById('search-input');
-            input.disabled = false;
-            input.placeholder = "Busque por Nome, CPF/CNPJ, Cidade, Bairro, Telefone...";
+            // Ativa os campos de busca após o carregamento
+            document.querySelectorAll('.filtro-input').forEach(input => input.disabled = false);
             document.getElementById('status-mensagem').style.display = 'none';
             
-            // Exibe os primeiros 100 itens para o carregamento inicial ser instantâneo
             exibirDados(dadosContribuientes.slice(0, 100), dadosContribuientes.length);
         },
         error: function(err) {
             console.error("Erro ao ler o CSV:", err);
-            document.getElementById('status-mensagem').innerText = "Erro ao carregar o arquivo CSV. Certifique-se de que o arquivo na pasta se chama exatamente 'dados.csv'.";
+            document.getElementById('status-mensagem').innerText = "Erro ao carregar o arquivo CSV. Verifique se o nome na pasta é exatamente 'dados.csv'.";
             document.getElementById('status-mensagem').style.color = 'red';
         }
     });
 
-    // Função para renderizar os dados na tabela baseado nos campos exatos do seu CSV
+    // Renderizar linhas na tabela
     function exibirDados(lista, totalGeral = null) {
         const corpoTabela = document.getElementById('corpo-tabela');
         const contador = document.getElementById('contador-resultados');
         corpoTabela.innerHTML = "";
         
         let totalExibido = totalGeral !== null ? totalGeral : lista.length;
-        contador.innerText = `${totalExibido} registro(s) encontrado(s).` + (lista.length === 100 ? " (Exibindo os primeiros 100 resultados para poupar memória)" : "");
+        contador.innerText = `${totalExibido} registro(s) encontrado(s).` + (lista.length === 100 ? " (Exibindo as primeiras 100 linhas correspondentes)" : "");
 
         if (lista.length === 0) {
-            corpoTabela.innerHTML = `<tr><td colspan="12" class="sem-resultados">Nenhum registro encontrado para essa busca.</td></tr>`;
+            corpoTabela.innerHTML = `<tr><td colspan="12" class="sem-resultados">Nenhum registro encontrado para os filtros aplicados.</td></tr>`;
             return;
         }
 
         lista.forEach(item => {
             const tr = document.createElement('tr');
-            // ATENÇÃO: Mapeado exatamente com as chaves maiúsculas do seu arquivo CSV original
+            // Mapeia de forma inteligente chaves maiúsculas ou minúsculas vindas do CSV
             tr.innerHTML = `
                 <td><b>${item['nome'] || item['NOME'] || '-'}</b></td>
                 <td>${item['cgccpf'] || item['CGCCPF'] || '-'}</td>
@@ -126,21 +143,38 @@
         });
     }
 
-    // Filtro de pesquisa universal por texto (Procura em qualquer campo)
-    document.getElementById('search-input').addEventListener('input', (e) => {
-        const termo = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        
-        if (!termo) {
+    // Função que combina os múltiplos filtros e executa a busca refinada
+    function executarFiltros() {
+        const fNome = document.getElementById('filtro-nome').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const fDoc = document.getElementById('filtro-doc').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const fBairro = document.getElementById('filtro-bairro').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const fCidade = document.getElementById('filtro-cidade').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        // Se nenhum filtro estiver preenchido, volta a exibir o padrão inicial rápido
+        if (!fNome && !fDoc && !fBairro && !fCidade) {
             exibirDados(dadosContribuientes.slice(0, 100), dadosContribuientes.length);
             return;
         }
 
+        // Filtra comparando cada campo individualmente
         const filtrados = dadosContribuientes.filter(item => {
-            const textoLinha = Object.values(item).join(' ').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            return textoLinha.includes(termo);
+            const nomeItem = (item['nome'] || item['NOME'] || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const docItem = (item['cgccpf'] || item['CGCCPF'] || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const bairroItem = (item['bairro'] || item['BAIRRO'] || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const cidadeItem = (item['cidade'] || item['CIDADE'] || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+            return nomeItem.includes(fNome) && 
+                   docItem.includes(fDoc) && 
+                   bairroItem.includes(fBairro) && 
+                   cidadeItem.includes(fCidade);
         });
 
         exibirDados(filtrados.slice(0, 100), filtrados.length);
+    }
+
+    // Escuta a digitação em qualquer um dos campos de filtro
+    document.querySelectorAll('.filtro-input').forEach(input => {
+        input.addEventListener('input', executarFiltros);
     });
 </script>
 
