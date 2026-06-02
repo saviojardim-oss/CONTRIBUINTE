@@ -9,8 +9,12 @@
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f8f9fa; margin: 0; padding: 20px 15px; color: #333; }
         .container { max-width: 100%; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h1 { color: #1e3a8a; margin-top: 0; font-size: 24px; text-align: center; margin-bottom: 20px; }
+        h1 { color: #1e3a8a; margin-top: 0; font-size: 24px; text-align: center; margin-bottom: 6px; }
         
+        /* Estilo da nova observação de navegação */
+        .dica-maps { text-align: center; color: #475569; font-size: 14px; margin-bottom: 25px; font-weight: 400; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .dica-maps span { color: #1e3a8a; font-weight: 600; }
+
         /* Painel de Filtros Avançados */
         .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; background: #f1f5f9; padding: 15px; border-radius: 8px; }
         .grupo-filtro { display: flex; flex-direction: column; }
@@ -28,6 +32,10 @@
         tr:nth-child(even) { background-color: #f8fafc; }
         tr:hover { background-color: #f1f5f9; }
 
+        /* Estilo do ícone do mapa com efeito de zoom */
+        .link-maps { text-decoration: none; font-size: 14px; display: inline-block; transition: transform 0.2s; cursor: pointer; margin-left: 5px; }
+        .link-maps:hover { transform: scale(1.3); }
+
         .sem-resultados { text-align: center; padding: 40px; color: #94a3b8; font-style: italic; }
         .carregando { text-align: center; padding: 20px; color: #3b82f6; font-weight: bold; }
     </style>
@@ -36,6 +44,8 @@
 
 <div class="container">
     <h1>📋 Painel de Consulta de Contribuintes</h1>
+    
+    <div class="dica-maps">💡 <span>Dica de Navegação:</span> Para abrir a localização no Google Maps em uma nova aba, basta clicar no ícone 📍 ao lado do logradouro.</div>
     
     <div class="filtros-grid">
         <div class="grupo-filtro">
@@ -77,7 +87,7 @@
                 </tr>
             </thead>
             <tbody id="corpo-tabela">
-                </tbody>
+            </tbody>
         </table>
     </div>
     <div id="status-mensagem" class="carregando">Buscando arquivo de contribuintes...</div>
@@ -86,8 +96,8 @@
 <script>
     let dadosContribuientes = [];
 
-    // Lendo o arquivo 'dados.csv' usando PapaParse
-    Papa.parse('dados.csv', {
+    // Lendo o arquivo 'dados.csv' usando PapaParse com caminho relativo compatível com GitHub Pages
+    Papa.parse('./dados.csv', {
         download: true,
         header: true,
         skipEmptyLines: true,
@@ -102,81 +112,4 @@
             exibirDados(dadosContribuientes.slice(0, 100), dadosContribuientes.length);
         },
         error: function(err) {
-            console.error("Erro ao ler o CSV:", err);
-            document.getElementById('status-mensagem').innerText = "Erro ao carregar o arquivo CSV. Verifique se o nome na pasta é exatamente 'dados.csv'.";
-            document.getElementById('status-mensagem').style.color = 'red';
-        }
-    });
-
-    // Renderizar linhas na tabela
-    function exibirDados(lista, totalGeral = null) {
-        const corpoTabela = document.getElementById('corpo-tabela');
-        const contador = document.getElementById('contador-resultados');
-        corpoTabela.innerHTML = "";
-        
-        let totalExibido = totalGeral !== null ? totalGeral : lista.length;
-        contador.innerText = `${totalExibido} registro(s) encontrado(s).` + (lista.length === 100 ? " (Exibindo as primeiras 100 linhas correspondentes)" : "");
-
-        if (lista.length === 0) {
-            corpoTabela.innerHTML = `<tr><td colspan="12" class="sem-resultados">Nenhum registro encontrado para os filtros aplicados.</td></tr>`;
-            return;
-        }
-
-        lista.forEach(item => {
-            const tr = document.createElement('tr');
-            // Mapeia de forma inteligente chaves maiúsculas ou minúsculas vindas do CSV
-            tr.innerHTML = `
-                <td><b>${item['nome'] || item['NOME'] || '-'}</b></td>
-                <td>${item['cgccpf'] || item['CGCCPF'] || '-'}</td>
-                <td>${item['rginscrestadual'] || item['RGINSCRESTADUAL'] || '-'}</td>
-                <td>${item['estado'] || item['ESTADO'] || '-'}</td>
-                <td>${item['cidade'] || item['CIDADE'] || '-'}</td>
-                <td>${item['bairro'] || item['BAIRRO'] || '-'}</td>
-                <td>${item['logradouro'] || item['LOGRADOURO'] || '-'}</td>
-                <td>${item['numero'] || item['NUMERO'] || '-'}</td>
-                <td>${item['cep'] || item['CEP'] || '-'}</td>
-                <td>${item['complemento'] || item['COMPLEMENTO'] || '-'}</td>
-                <td>${item['email'] || item['EMAIL'] || '-'}</td>
-                <td>${item['telefones'] || item['TELEFONES'] || '-'}</td>
-            `;
-            corpoTabela.appendChild(tr);
-        });
-    }
-
-    // Função que combina os múltiplos filtros e executa a busca refinada
-    function executarFiltros() {
-        const fNome = document.getElementById('filtro-nome').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const fDoc = document.getElementById('filtro-doc').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const fBairro = document.getElementById('filtro-bairro').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const fCidade = document.getElementById('filtro-cidade').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-        // Se nenhum filtro estiver preenchido, volta a exibir o padrão inicial rápido
-        if (!fNome && !fDoc && !fBairro && !fCidade) {
-            exibirDados(dadosContribuientes.slice(0, 100), dadosContribuientes.length);
-            return;
-        }
-
-        // Filtra comparando cada campo individualmente
-        const filtrados = dadosContribuientes.filter(item => {
-            const nomeItem = (item['nome'] || item['NOME'] || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const docItem = (item['cgccpf'] || item['CGCCPF'] || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const bairroItem = (item['bairro'] || item['BAIRRO'] || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const cidadeItem = (item['cidade'] || item['CIDADE'] || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-            return nomeItem.includes(fNome) && 
-                   docItem.includes(fDoc) && 
-                   bairroItem.includes(fBairro) && 
-                   cidadeItem.includes(fCidade);
-        });
-
-        exibirDados(filtrados.slice(0, 100), filtrados.length);
-    }
-
-    // Escuta a digitação em qualquer um dos campos de filtro
-    document.querySelectorAll('.filtro-input').forEach(input => {
-        input.addEventListener('input', executarFiltros);
-    });
-</script>
-
-</body>
-</html>
+            console.
